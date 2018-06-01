@@ -10,3 +10,15 @@ def getNodes(vertices, radius, n_nodes=np.inf):
         nodes = np.append(nodes, [idx])
         idces = idces[~np.any(D, axis=0)]
     return nodes
+
+def k_nearest(verts, nodes, k):
+    result = np.zeros((verts.shape[0], k))
+    result_D = np.zeros((verts.shape[0], k))
+    max_per_slice = int(np.floor(1e8/nodes.shape[0])) #about 800 MB memory
+    n_slices = int(np.ceil(verts.shape[0]/max_per_slice))
+    for i in range(n_slices):
+        cur_slice_length = min(verts.shape[0]-i*max_per_slice, max_per_slice)
+        D = distance_matrix(verts[i*max_per_slice:i*max_per_slice+cur_slice_length], nodes)
+        result[i*max_per_slice:i*max_per_slice+cur_slice_length, :k] = np.argsort(D, axis=1)[:, :k]
+        result_D[i*max_per_slice:i*max_per_slice+cur_slice_length, :k] = np.sort(D, axis=1)[:, :k]
+    return result, result_D
