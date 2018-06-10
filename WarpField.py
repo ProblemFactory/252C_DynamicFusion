@@ -11,7 +11,7 @@ def getNodes(vertices, radius, n_nodes=np.inf):
         idces = idces[~np.any(D, axis=0)]
     return nodes
 
-def k_nearest(verts, nodes, k):
+def k_nearest(verts, nodes, k, reverse=True):
     l = 0
     if verts is nodes:
         l = 1
