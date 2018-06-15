@@ -1,12 +1,8 @@
 import numpy as np
-import cupy as cp
+from numba import autojit
 
-def update_TSDF(R, t, Dt, K, TSDF_v, TSDF_w, tau, idces, dc_idces, GPU=False):
-    if GPU:
-        np = __import__("cupy")
-    else:
-        np = __import__("numpy")
-        
+@autojit
+def update_TSDF(R, t, Dt, K, TSDF_v, TSDF_w, tau, idces, dc_idces):
     #print(R.shape, t.shape)
     #print(R.min(), R.max(), t.min())
     xt = (R@dc_idces+t)[...,0].T

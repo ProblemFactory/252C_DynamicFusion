@@ -1,6 +1,8 @@
 from scipy.spatial import distance_matrix
 import numpy as np
+from numba import autojit, prange
 
+@autojit
 def getNodes(vertices, radius, n_nodes=np.inf):
     nodes = np.array([], dtype=np.int)
     idces = np.arange(vertices.shape[0])
@@ -11,6 +13,7 @@ def getNodes(vertices, radius, n_nodes=np.inf):
         idces = idces[~np.any(D, axis=0)]
     return nodes
 
+@autojit
 def k_nearest(verts, nodes, k, reverse=True):
     l = 0
     if verts is nodes:
@@ -19,7 +22,7 @@ def k_nearest(verts, nodes, k, reverse=True):
     result_D = np.zeros((verts.shape[0], k))
     max_per_slice = int(np.floor(1e7/nodes.shape[0])) #about 800 MB memory
     n_slices = int(np.ceil(verts.shape[0]/max_per_slice))
-    for i in range(n_slices):
+    for i in prange(n_slices):
         cur_slice_length = min(verts.shape[0]-i*max_per_slice, max_per_slice)
         D = distance_matrix(verts[i*max_per_slice:i*max_per_slice+cur_slice_length], nodes)
         result[i*max_per_slice:i*max_per_slice+cur_slice_length, :] = np.argsort(D, axis=1)[:, l:l+k]

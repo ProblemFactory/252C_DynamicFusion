@@ -1,6 +1,49 @@
 import numpy as np
 from numpy.linalg import norm
+from numba import autojit, prange
 
+
+def toHomo(x):
+    # converts points from inhomogeneous to homogeneous coordinates
+    if x.ndim == 1:
+        return np.hstack((x,1))
+    else:
+        return np.vstack((x,np.ones((1,x.shape[1]))))
+
+
+def fromHomo(x):
+    # converts points from homogeneous to inhomogeneous coordinates
+    return x[:-1] / x[-1]
+from numba import autojit, prange
+
+@autojit
+def dense_render(K, verts, faces, shape=(480,640)):
+    result = np.zeros((shape[0], shape[1], 5))
+    verts_sensor = K@verts.T
+    verts_sensor = verts_sensor[:-1, :]/verts_sensor[-1:, :]
+    verts_sensor = verts_sensor.T
+    for v in prange(faces.shape[0]):
+        min_i = max(int(np.floor(verts_sensor[faces[v],0].min())), 0)
+        min_j = max(int(np.floor(verts_sensor[faces[v],1].min())), 0)
+        max_i = min(int(np.ceil(verts_sensor[faces[v],0].max())), result.shape[0]-1)
+        max_j = min(int(np.ceil(verts_sensor[faces[v],1].max())), result.shape[1]-1)
+        for i in prange(min_i, max_i+1):
+            for j in prange(min_j, max_j+1):
+                a = verts_sensor[faces[v,0],0] - i
+                b = verts_sensor[faces[v,1],0] - verts_sensor[faces[v,0],0]
+                c = verts_sensor[faces[v,2],0] - verts_sensor[faces[v,0],0]
+                d = verts_sensor[faces[v,0],1] - j
+                e = verts_sensor[faces[v,1],1] - verts_sensor[faces[v,0],1]
+                f = verts_sensor[faces[v,2],1] - verts_sensor[faces[v,0],1]
+                s = (a*f-c*d)/(c*e-b*f)
+                t = (b*d-a*e)/(c*e-b*f)
+                if s>=0 and s<=1 and t>=0 and t<=1 and s+t<=1:
+                    vet = s*verts[faces[v,1], :]+t*verts[faces[v,2], :]+(1-s-t)*verts[faces[v,0], :]
+                    if result[i,j,0]==0 or vet[2]<result[i,j,0]:
+                        result[i,j,:] = [vet[2],1-s-t,s,t,v]
+    return result
+    
+@autojit
 def render(verts, K, shape=(480,640)):
     sensor_plane_pts = K@verts.T
     sensor_plane_pts /= sensor_plane_pts[2,:]
